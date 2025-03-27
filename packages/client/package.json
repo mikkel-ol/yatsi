@@ -7,8 +7,11 @@
     "build": "tsc",
     "dev": "ts-node src/index.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ws": "^8.18.1"
+  },
   "devDependencies": {
+    "@types/ws": "^8.18.0",
     "ts-node": "^10.9.1"
   }
 }
