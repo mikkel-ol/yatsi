@@ -1,73 +1,132 @@
 import express from "express";
 import http from "http";
-import { WebSocketServer, WebSocket } from "ws";
-import httpProxy from "http-proxy";
-import { TUNNEL_ENDPOINT, type ClientInfo, type TunnelRequest, type TunnelResponse } from "@mikkel-ol/shared";
+import { WebSocketServer, type RawData } from "ws";
 import { generateSlug } from "random-word-slugs";
+import { v4 as uuidv4 } from "uuid";
+import type { ClientInfo } from "./types/client-info.js";
+import { Params, type Message, type Slug } from "@mikkel-ol/shared";
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
-const proxy = httpProxy.createProxyServer();
 
-const clients = new Map<string, ClientInfo>(); // slug -> client info
-const listeners = new Set<WebSocket>(); // connected 'host' clients
+const clients = new Map<Slug, ClientInfo>();
 
-app.use(express.json());
-
-// 1. Endpoint to request a tunnel
-app.post<{}, TunnelResponse, TunnelRequest>(TUNNEL_ENDPOINT, (req, res) => {
-  const { port, type = "mf" } = req.body;
-  const slug = generateSlug(2);
-  const url = `https://${slug}.${process.env.DOMAIN}`;
-
-  // ? should we establish the tunnel here?
-
-  res.json({ slug, url });
-});
-
-// 2. Incoming WebSocket connections from clients
+// 1. Incoming WebSocket connections from clients
 wss.on("connection", (ws, req) => {
-  const params = new URLSearchParams((req.url || "").split("?")[1]);
-  const token = params.get("token");
-  const port = parseInt(params.get("port") || "0");
-  const type = (params.get("type") || "mf") as "host" | "mf";
+  // https://subdomain.tunnel.dev?token=apikey&type=mf&port=1234&subdomain=mytunnel
+  const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
+  const result = Params.safeParse(searchParams);
 
-  if (!token || !port) return ws.close();
+  if (!result.success) {
+    ws.close(1003, `Invalid parameters: ${result.error.format()}`);
+    return;
+  }
 
-  clients.set(token, { ws, port, type });
-  if (type === "host") listeners.add(ws);
+  const { port, token: apiKey, subdomain, type } = result.data;
+
+  if (!apiKey) {
+    return ws.close(1003, "Invalid API key");
+  }
+
+  // TODO: Validate apikey
+  const validApiKey = true;
+  if (!validApiKey) {
+    return ws.close(1003, "Invalid API key");
+  }
+
+  const slug = subdomain || generateSlug(2);
+
+  const doesSlugExist = !!clients.get(slug);
+
+  if (doesSlugExist) {
+    return ws.close(1003, `Subdomain already in use: ${slug}`);
+  }
+
+  clients.set(slug, { ws, port, type: type! });
 
   ws.on("message", (data) => {
-    // Forward event to all 'host' clients
-    if (type === "mf") {
-      for (const listener of listeners) {
-        if (listener.readyState === WebSocket.OPEN) {
-          listener.send(data);
+    const message: Message = JSON.parse(data.toString());
+
+    if (type === "mf" && message.type === "reload") {
+      clients.forEach((client) => {
+        if (client.type === "host") {
+          client.ws.send(JSON.stringify(message));
         }
-      }
+      });
     }
   });
 
   ws.on("close", () => {
-    clients.delete(token);
-    if (type === "host") listeners.delete(ws);
+    clients.delete(slug);
   });
+
+  const message: Message = {
+    type: "tunnel-ready",
+    timestamp: Date.now(),
+    url: `https://${slug}.${process.env.DOMAIN}`,
+  };
+
+  ws.send(JSON.stringify(message));
 });
 
-// 3. Proxy HTTP traffic to tunnel clients
+// 2. Handle incoming HTTP requests and forward over WebSocket to client
 app.use((req, res) => {
-  const host = req.headers.host || "";
-  const token = host.split(".")[0];
-  const client = clients.get(token!);
+  const host = req.headers.host;
 
-  if (!client || client.type !== "mf") {
-    res.sendStatus(502);
+  if (!host) {
+    res.json("No host found").status(400);
     return;
   }
 
-  proxy.web(req, res, { target: `http://localhost:${client.port}` }, () => {
-    res.sendStatus(502);
+  const slug = host.split(".")[0];
+
+  if (!slug) {
+    res.json(`Unknown tunnel: ${host}`).status(400);
+    return;
+  }
+
+  const client = clients.get(slug);
+
+  if (!client) {
+    res.json(`Unknown tunnel: ${host}`).status(400);
+    return;
+  }
+
+  const ws = client.ws;
+
+  const chunks: Buffer[] = [];
+  req.on("data", (chunk) => chunks.push(chunk));
+
+  req.on("end", () => {
+    const requestId = uuidv4();
+    const body = Buffer.concat(chunks).toString("base64");
+
+    const onMessage = (msg: RawData) => {
+      const response = JSON.parse(msg.toString());
+
+      if (response.type !== "http-response" || response.requestId !== requestId) {
+        return;
+      }
+
+      ws.off("message", onMessage);
+      res.writeHead(response.status, response.headers);
+      res.end(Buffer.from(response.body, "base64"));
+    };
+
+    ws.on("message", onMessage);
+
+    const payload = {
+      type: "http-request",
+      timestamp: Date.now(),
+      requestId,
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      body,
+    } satisfies Message;
+
+    ws.send(JSON.stringify(payload));
   });
 });
 

@@ -22,9 +22,15 @@ yargs(hideBin(process.argv))
           type: "string",
           describe: "Domain server to use for the tunnel",
           default: DEFAULT_DOMAIN,
+        })
+        .option("token", {
+          type: "string",
+          describe: "API key for the tunnel server",
+          demandOption: true,
+          alias: "apiKey",
         }),
-    async ({ port }) => {
-      const { url } = await tunnel.start({ port });
+    async ({ domain, subdomain, token, port }) => {
+      const { url } = await tunnel.start({ domain, subdomain, token, port });
       console.log(`Tunnel ready at: ${url}`);
     },
   )
