@@ -1,7 +1,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { tunnel } from "./tunnel.js";
-import { DEFAULT_DOMAIN } from "@mikkel-ol/shared";
+import { DEFAULT_DOMAIN, logger } from "@mikkel-ol/shared";
 
 yargs(hideBin(process.argv))
   .command(
@@ -31,7 +31,7 @@ yargs(hideBin(process.argv))
         }),
     async ({ domain, subdomain, token, port }) => {
       const { url } = await tunnel.start({ domain, subdomain, token, port });
-      console.log(`Tunnel ready at: ${url}`);
+      logger.success(`Tunnel ready at: ${url}`);
     },
   )
   .help()

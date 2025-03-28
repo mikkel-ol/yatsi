@@ -4,7 +4,7 @@ import { WebSocketServer, type RawData } from "ws";
 import { generateSlug } from "random-word-slugs";
 import { v4 as uuidv4 } from "uuid";
 import type { ClientInfo } from "./types/client-info.js";
-import { Params, type Message, type Slug } from "@mikkel-ol/shared";
+import { logger, Params, type Message, type Slug } from "@mikkel-ol/shared";
 
 const app = express();
 const server = http.createServer(app);
@@ -131,3 +131,7 @@ app.use((req, res) => {
 });
 
 server.listen(process.env.PORT);
+
+server.on("listening", () => {
+  logger.success(`Server running on port ${process.env.PORT}`);
+});

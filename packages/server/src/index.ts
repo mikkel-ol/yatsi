@@ -1,9 +1,9 @@
 import type { z } from "zod";
-import { envVariables } from "./config.js";
+import { EnvironmentVariables } from "./config.js";
 
 declare global {
   namespace NodeJS {
-    interface ProcessEnv extends z.infer<typeof envVariables> {}
+    interface ProcessEnv extends z.infer<typeof EnvironmentVariables> {}
   }
 }
 
