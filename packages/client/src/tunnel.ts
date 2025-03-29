@@ -1,10 +1,11 @@
-import { DEFAULT_DOMAIN } from "@mikkel-ol/shared";
+import { DEFAULT_DOMAIN, logger, parseParams } from "@mikkel-ol/shared";
 import WebSocket from "ws";
 import { z } from "zod";
 import http from "http";
 
 const schema = z.object({
   token: z.string(),
+  secure: z.boolean().default(true).optional(),
   domain: z.string().default(DEFAULT_DOMAIN).optional(),
   subdomain: z.string().optional(),
   port: z.number().int().positive(),
@@ -17,12 +18,18 @@ export interface Tunnel {
 export const tunnel = {
   async start(config: z.infer<typeof schema>): Promise<Tunnel> {
     return new Promise((resolve, reject) => {
-      const { token, domain, subdomain, port } = schema.parse(config);
+      const { token, secure, domain, subdomain, port } = schema.parse(config);
 
-      const query = new URLSearchParams({ domain: domain!, port: port.toString(), token });
+      const query = new URLSearchParams({ port: port.toString(), token });
       if (subdomain) query.set("subdomain", subdomain);
 
-      const ws = new WebSocket(`wss://${domain}?${query.toString()}`);
+      parseParams(query);
+
+      const wsSchema = secure ? "wss" : "ws";
+      const url = `${wsSchema}://${domain}?${query.toString()}`;
+
+      logger.debug(`Connecting to tunnel server at ${url}`);
+      const ws = new WebSocket(url);
 
       ws.on("message", (data) => {
         const msg = JSON.parse(data.toString());

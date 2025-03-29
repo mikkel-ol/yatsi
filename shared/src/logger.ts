@@ -9,6 +9,8 @@ export enum LOG_LEVEL {
   DISABLED = "99",
 }
 
+export const DEFAULT_LOG_LEVEL = LOG_LEVEL.INFO;
+
 export const logger = {
   debug: (...messages: any) => {
     log(LOG_LEVEL.DEBUG, messages);
@@ -28,7 +30,7 @@ export const logger = {
 };
 
 function log(level: LOG_LEVEL, messages: any) {
-  const minimumLogLevel = parseInt(process.env.LOG_LEVEL || "0", 10);
+  const minimumLogLevel = parseInt(process.env.LOG_LEVEL || DEFAULT_LOG_LEVEL, 10);
   const currentLogLevel = parseInt(level, 10);
 
   if (currentLogLevel < minimumLogLevel) {

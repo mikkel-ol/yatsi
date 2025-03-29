@@ -4,7 +4,7 @@ import { WebSocketServer, type RawData } from "ws";
 import { generateSlug } from "random-word-slugs";
 import { v4 as uuidv4 } from "uuid";
 import type { ClientInfo } from "./types/client-info.js";
-import { logger, Params, type Message, type Slug } from "@mikkel-ol/shared";
+import { logger, safeParseParams, type Message, type Slug } from "@mikkel-ol/shared";
 
 const app = express();
 const server = http.createServer(app);
@@ -18,10 +18,10 @@ wss.on("connection", (ws, req) => {
 
   // https://subdomain.tunnel.dev?token=apikey&type=mf&port=1234&subdomain=mytunnel
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
-  const result = Params.safeParse(searchParams);
+  const result = safeParseParams(searchParams);
 
   if (!result.success) {
-    ws.close(1003, `Invalid parameters: ${result.error.format()}`);
+    ws.close(1003, `Invalid parameters: ${JSON.stringify(result.error.format())}`);
     return;
   }
 
