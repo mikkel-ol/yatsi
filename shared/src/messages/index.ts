@@ -1,5 +1,15 @@
 import type { HttpRequestMessage } from "./http-request.js";
+import type { HttpResponseMessage } from "./http-response.js";
 import type { TunnelReadyMessage } from "./ready.js";
 import type { ReloadMessage } from "./reload.js";
+import type { SocketProxyCloseMessage, SocketProxyErrorMessage, SocketProxyMessage, SocketProxyOpenMessage } from "./socket-proxy.js";
 
-export type Message = HttpRequestMessage | TunnelReadyMessage | ReloadMessage;
+export type Message =
+  | HttpRequestMessage
+  | HttpResponseMessage
+  | SocketProxyOpenMessage
+  | SocketProxyMessage
+  | SocketProxyCloseMessage
+  | SocketProxyErrorMessage
+  | TunnelReadyMessage
+  | ReloadMessage;

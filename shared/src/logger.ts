@@ -41,16 +41,16 @@ function log(level: LOG_LEVEL, messages: any) {
 
   switch (level) {
     case LOG_LEVEL.DEBUG:
-      prefix = chalk.bgBlue(" DEBUG ");
+      prefix = chalk.bgBlue("  DEBUG  ");
       break;
     case LOG_LEVEL.INFO:
-      prefix = chalk.bgWhite(" INFO ");
+      prefix = chalk.bgWhite.black("  INFO   ");
       break;
     case LOG_LEVEL.ERROR:
-      prefix = chalk.bgRed(" ERROR ");
+      prefix = chalk.bgRed("  ERROR  ");
       break;
     case LOG_LEVEL.WARN:
-      prefix = chalk.bgYellow(" WARN ");
+      prefix = chalk.bgYellow("  WARN   ");
       break;
     case LOG_LEVEL.SUCCESS:
       prefix = chalk.bgGreen(" SUCCESS ");
