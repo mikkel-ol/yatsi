@@ -14,6 +14,8 @@ const clients = new Map<Slug, ClientInfo>();
 
 // 1. Incoming WebSocket connections from clients
 wss.on("connection", (ws, req) => {
+  logger.debug("Incoming WebSocket connection", req.url, req.socket.remoteAddress);
+
   // https://subdomain.tunnel.dev?token=apikey&type=mf&port=1234&subdomain=mytunnel
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
   const result = Params.safeParse(searchParams);
