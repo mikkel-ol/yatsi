@@ -7,4 +7,4 @@ declare global {
   }
 }
 
-export * from "./server.js";
+export * from "./server/index.js";

@@ -123,6 +123,18 @@ export const tunnel = {
         }
       });
 
+      ws.on("error", (err) => {
+        const unauthenticated = err.message.includes("401");
+
+        if (unauthenticated) {
+          logger.error(`Tunnel authentication failed with key: ${token}`);
+          return reject();
+        } else {
+          logger.error("Tunnel error", err);
+          return reject(err);
+        }
+      });
+
       ws.on("close", () => {
         logger.info("Tunnel closed");
       });

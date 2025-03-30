@@ -35,8 +35,10 @@ yargs(hideBin(process.argv))
           alias: "apiKey",
         }),
     async ({ secure, domain, subdomain, token, port }) => {
-      const { url } = await tunnel.start({ secure, domain, subdomain, token, port });
-      logger.success(`Tunnel ready at: ${url}`);
+      try {
+        const { url } = await tunnel.start({ secure, domain, subdomain, token, port });
+        logger.success(`Tunnel ready at: ${url}`);
+      } catch {}
     },
   )
   .help()
