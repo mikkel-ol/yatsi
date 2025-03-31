@@ -14,6 +14,12 @@ yargs(hideBin(process.argv))
           describe: "Local port to expose",
           demandOption: true,
         })
+        .option("token", {
+          type: "string",
+          describe: "API key for the tunnel server",
+          demandOption: true,
+          alias: "apiKey",
+        })
         .option("subdomain", {
           type: "string",
           describe: "Desired subdomain for the tunnel",
@@ -27,18 +33,10 @@ yargs(hideBin(process.argv))
           type: "boolean",
           describe: "Use HTTPS for the tunnel",
           default: true,
-        })
-        .option("token", {
-          type: "string",
-          describe: "API key for the tunnel server",
-          demandOption: true,
-          alias: "apiKey",
         }),
     async ({ secure, domain, subdomain, token, port }) => {
-      try {
-        const { url } = await tunnel.start({ secure, domain, subdomain, token, port });
-        logger.success(`Tunnel ready at: ${url}`);
-      } catch {}
+      const { url } = await tunnel.start({ secure, domain, subdomain, token, port });
+      logger.success(`Tunnel ready at: ${url}`);
     },
   )
   .help()

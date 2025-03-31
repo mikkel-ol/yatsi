@@ -3,33 +3,34 @@ import { CLIENTS } from "./clients.js";
 import { logger, type Message } from "@mikkel-ol/shared";
 import { v4 as uuidv4 } from "uuid";
 import type { RawData } from "ws";
+import { parse } from "tldts";
 
 /**
  * Handle incoming HTTP requests to a tunnel and forward them to the client socket
  */
 export const proxy: RequestHandler = (req, res) => {
-  const host = req.headers.host;
+  const parseResult = parse(req.headers.host || "");
+  const domain = parseResult.domain;
+  const subdomain = parseResult.subdomain || parseResult.domainWithoutSuffix;
 
-  if (!host) {
+  if (!domain) {
     res.json({ error: "No host found" }).status(400);
     return;
   }
 
-  const slug = host.split(".")[0];
-
-  if (!slug) {
-    res.json({ error: `Unknown tunnel: ${host}` }).status(400);
+  if (!subdomain) {
+    res.json({ error: `Unknown tunnel: ${subdomain}.${domain}` }).status(400);
     return;
   }
 
-  const client = CLIENTS.get(slug);
+  const client = CLIENTS.get(subdomain);
 
   if (!client) {
-    res.json({ error: `Unknown tunnel: ${host}` }).status(400);
+    res.json({ error: `Unknown tunnel: ${subdomain}` }).status(400);
     return;
   }
 
-  logger.debug(`${req.method} ${slug}: ${req.url}`, req.socket.remoteAddress);
+  logger.debug(`${req.method} ${subdomain}: ${req.url}`, req.socket.remoteAddress);
 
   const ws = client.ws;
 

@@ -1,4 +1,13 @@
-import { DEFAULT_DOMAIN, logger, parseParams, type Message } from "@mikkel-ol/shared";
+import {
+  __INIT_PARAM__,
+  __INIT_PARAM_VALUE__,
+  DEFAULT_DOMAIN,
+  logger,
+  Params,
+  parseParams,
+  type Message,
+  type Stringify,
+} from "@mikkel-ol/shared";
 import http from "http";
 import WebSocket from "ws";
 import { z } from "zod";
@@ -17,20 +26,26 @@ export interface Tunnel {
 
 export const tunnel = {
   async start(config: z.input<typeof schema>): Promise<Tunnel> {
+    const { token, secure, domain, subdomain, port } = schema.parse(config);
+
+    const params = {
+      [__INIT_PARAM__]: __INIT_PARAM_VALUE__,
+      port: port.toString(),
+      token,
+    } as const satisfies Stringify<Params>;
+
+    const query = new URLSearchParams(params);
+    if (subdomain) query.set("subdomain", subdomain);
+
+    parseParams(query);
+
+    const wsSchema = secure ? "wss" : "ws";
+    const url = `${wsSchema}://${domain}?${query.toString()}`;
+
+    logger.debug(`Connecting to tunnel server at ${url}`);
+    const ws = new WebSocket(url);
+
     return new Promise((resolve, reject) => {
-      const { token, secure, domain, subdomain, port } = schema.parse(config);
-
-      const query = new URLSearchParams({ pleasegivemea: "tunnel", port: port.toString(), token });
-      if (subdomain) query.set("subdomain", subdomain);
-
-      parseParams(query);
-
-      const wsSchema = secure ? "wss" : "ws";
-      const url = `${wsSchema}://${domain}?${query.toString()}`;
-
-      logger.debug(`Connecting to tunnel server at ${url}`);
-      const ws = new WebSocket(url);
-
       ws.on("message", (data) => {
         logger.debug("Incoming message", data.toString());
         const msg: Message = JSON.parse(data.toString());
@@ -68,14 +83,14 @@ export const tunnel = {
             });
           });
 
-          req.on("error", () => {
+          req.on("error", (e) => {
             const message: Message = {
               type: "http-response",
               timestamp: Date.now(),
               requestId,
               status: 502,
               headers: {},
-              body: "",
+              body: JSON.stringify(e),
             };
 
             ws.send(JSON.stringify(message));

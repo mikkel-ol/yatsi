@@ -1,22 +1,23 @@
-import { logger, safeParseParams, type Message } from "@mikkel-ol/shared";
+import { __INIT_PARAM__, __INIT_PARAM_VALUE__, logger, safeParseParams, type Message } from "@mikkel-ol/shared";
 import type { IncomingMessage } from "http";
 import type { WebSocket } from "ws";
 import type { ClientInfo } from "../types/client-info.js";
 import { CLIENTS } from "./clients.js";
+import { parse } from "tldts";
 
 export const newConnection = (ws: WebSocket, req: IncomingMessage) => {
   logger.debug("Incoming WebSocket connection", req.url, req.socket.remoteAddress);
 
-  // https://subdomain.tunnel.dev?pleasegivemea=tunnel&token=apikey&type=mf&port=1234&subdomain=mytunnel
+  // https://subdomain.tunnel.dev?__tunnel_init__=1&token=apikey&type=mf&port=1234&subdomain=mytunnel
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
 
-  const pleaseGiveMeA = searchParams.get("pleasegivemea");
+  const isInit = searchParams.get(__INIT_PARAM__) === __INIT_PARAM_VALUE__;
 
-  if (pleaseGiveMeA === "tunnel") {
+  if (isInit) {
     return handleNewTunnel(ws, req);
+  } else {
+    return handleProxySocket(ws, req);
   }
-
-  return handleProxySocket(ws, req);
 };
 
 function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
@@ -76,16 +77,17 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
 }
 
 function handleProxySocket(ws: WebSocket, req: IncomingMessage) {
-  const slug = req.headers.host?.split(".")[0];
+  const parseResult = parse(req.headers.host || "");
+  const subdomain = parseResult.subdomain || parseResult.domainWithoutSuffix;
 
-  if (!slug) {
+  if (!subdomain) {
     return ws.close(1003, `Unknown tunnel: ${req.headers.host}`);
   }
 
-  const client = CLIENTS.get(slug);
+  const client = CLIENTS.get(subdomain);
 
   if (!client) {
-    return ws.close(1003, `Unknown tunnel: ${slug}`);
+    return ws.close(1003, `Unknown tunnel: ${subdomain}`);
   }
 
   const proxy = client.ws;
