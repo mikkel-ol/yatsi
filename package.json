@@ -3,10 +3,12 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:server": "turbo run build --filter=\"@mikkel-ol/yat-server\"",
+    "check-types": "turbo run check-types",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "lint": "turbo run lint",
+    "start:server": "turbo run start --filter=\"server\""
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",
