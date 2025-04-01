@@ -6,7 +6,8 @@ import { logger } from "@mikkel-ol/shared";
 
 export const authenticate: VerifyClientCallbackAsync<IncomingMessage> = ({ req }, done) => {
   const parseResult = parse(req.headers.host || "");
-  const subdomain = parseResult.subdomain || parseResult.domainWithoutSuffix;
+  const domain = process.env.DOMAIN;
+  const subdomain = parseResult.hostname?.includes(domain) ? parseResult.hostname.replace(domain, "").replace(".", "") : undefined;
 
   logger.debug(`Authenticating: ${subdomain}`);
 
