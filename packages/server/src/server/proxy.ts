@@ -1,17 +1,14 @@
 import type { RequestHandler } from "express";
 import { CLIENTS } from "./clients.js";
-import { logger, type Message } from "@mikkel-ol/shared";
+import { logger, parse, type Message } from "@mikkel-ol/shared";
 import { v4 as uuidv4 } from "uuid";
 import type { RawData } from "ws";
-import { parse } from "tldts";
 
 /**
  * Handle incoming HTTP requests to a tunnel and forward them to the client socket
  */
 export const proxy: RequestHandler = (req, res) => {
-  const parseResult = parse(req.headers.host || "");
-  const domain = parseResult.domain;
-  const subdomain = parseResult.subdomain || parseResult.domainWithoutSuffix;
+  const { domain, subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
 
   if (!domain) {
     res.json({ error: "No host found" }).status(400);

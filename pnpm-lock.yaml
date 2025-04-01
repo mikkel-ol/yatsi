@@ -66,9 +66,6 @@ importers:
       random-word-slugs:
         specifier: ^0.1.7
         version: 0.1.7
-      tldts:
-        specifier: ^6.1.85
-        version: 6.1.85
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -97,6 +94,9 @@ importers:
       chalk:
         specifier: ^5.4.1
         version: 5.4.1
+      tldts:
+        specifier: ^6.1.85
+        version: 6.1.85
       zod:
         specifier: ^3.24.2
         version: 3.24.2

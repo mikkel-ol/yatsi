@@ -1,15 +1,12 @@
 import type { IncomingMessage } from "http";
-import { parse } from "tldts";
 import type { VerifyClientCallbackAsync } from "ws";
 import { CLIENTS } from "./clients.js";
-import { logger } from "@mikkel-ol/shared";
+import { logger, parse } from "@mikkel-ol/shared";
 
 export const authenticate: VerifyClientCallbackAsync<IncomingMessage> = ({ req }, done) => {
-  const parseResult = parse(req.headers.host || "");
-  const domain = process.env.DOMAIN;
-  const subdomain = parseResult.hostname?.includes(domain) ? parseResult.hostname.replace(domain, "").replace(".", "") : undefined;
+  const { subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
 
-  logger.debug(`Authenticating: ${subdomain}`);
+  logger.debug(`Authenticating: '${subdomain}'`);
 
   // If socket connection directly to the tunnel,
   // we need to check if the subdomain is valid
@@ -24,14 +21,12 @@ export const authenticate: VerifyClientCallbackAsync<IncomingMessage> = ({ req }
     }
   }
 
-  logger.debug(`${subdomain} not found, checking API key`);
-
   // else it is a new tunnel request
   // and we need to check the API key
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
   const apiKey = searchParams.get("token");
 
-  logger.debug(`Authenticating API key: ${apiKey}`);
+  logger.debug(`No subdomain found, authentication API key: '${apiKey}'`);
 
   if (!apiKey) {
     return done(false, 401, "Invalid API key");

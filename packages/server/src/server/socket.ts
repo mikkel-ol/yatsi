@@ -1,9 +1,9 @@
-import { __INIT_PARAM__, __INIT_PARAM_VALUE__, logger, safeParseParams, type Message } from "@mikkel-ol/shared";
+import { __INIT_PARAM__, __INIT_PARAM_VALUE__, logger, parse, safeParseParams, type Message } from "@mikkel-ol/shared";
 import type { IncomingMessage } from "http";
 import type { WebSocket } from "ws";
 import type { ClientInfo } from "../types/client-info.js";
 import { CLIENTS } from "./clients.js";
-import { parse } from "tldts";
+import { generateSlug } from "random-word-slugs";
 
 export const newConnection = (ws: WebSocket, req: IncomingMessage) => {
   logger.debug("Incoming WebSocket connection", req.url, req.socket.remoteAddress);
@@ -33,7 +33,7 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
 
   const { port, subdomain, type } = result.data;
 
-  const slug = subdomain || "vast-ice"; //subdomain || generateSlug(2);
+  const slug = subdomain || generateSlug(2);
 
   const doesSlugExist = !!CLIENTS.get(slug);
 
@@ -77,8 +77,7 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
 }
 
 function handleProxySocket(ws: WebSocket, req: IncomingMessage) {
-  const parseResult = parse(req.headers.host || "");
-  const subdomain = parseResult.subdomain || parseResult.domainWithoutSuffix;
+  const { subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
 
   if (!subdomain) {
     return ws.close(1003, `Unknown tunnel: ${req.headers.host}`);
