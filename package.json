@@ -1,9 +1,9 @@
 {
-  "name": "yat",
+  "name": "yatsi",
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "build:server": "turbo run build --filter=\"@mikkel-ol/yat-server\"",
+    "build:server": "turbo run build --filter=\"@mikkel-ol/yatsi-server\"",
     "check-types": "turbo run check-types",
     "dev": "turbo run dev",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

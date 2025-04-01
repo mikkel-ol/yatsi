@@ -1,5 +1,5 @@
-# YAT
+# 🎲 YATSI
 
-Yet Another Tunnel service
+Yet Another Tunnel Service Implementation
 
-_This time just better_
+_But better_
