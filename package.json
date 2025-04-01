@@ -1,14 +1,14 @@
 {
   "name": "yatsi",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "turbo run build",
     "build:server": "turbo run build --filter=\"@mikkel-ol/yatsi-server\"",
     "check-types": "turbo run check-types",
     "dev": "turbo run dev",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "lint": "turbo run lint",
-    "start:server": "turbo run start --filter=\"server\""
+    "lint": "turbo run lint"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",

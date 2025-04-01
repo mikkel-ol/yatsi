@@ -24,3 +24,11 @@ app.use(proxy);
 
 server.on("listening", () => logger.success(`Server running on port ${process.env.PORT}`));
 server.listen(process.env.PORT);
+
+/**
+ * Gracefully shutdown
+ */
+process.on("SIGINT", () => {
+  logger.info("Shutting down server..");
+  server.close(() => process.exit(0));
+});
