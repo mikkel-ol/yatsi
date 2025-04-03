@@ -33,5 +33,5 @@ function parse(searchParams: URLSearchParams, method: "parse" | "safeParse") {
     data[key] = value;
   }
 
-  return method === "parse" ? Params.parse(data) : Params.safeParse(data);
+  return Params[method](data);
 }

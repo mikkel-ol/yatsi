@@ -4,6 +4,12 @@ import type { TunnelReadyMessage } from "./ready.js";
 import type { ReloadMessage } from "./reload.js";
 import type { SocketProxyCloseMessage, SocketProxyErrorMessage, SocketProxyMessage, SocketProxyOpenMessage } from "./socket-proxy.js";
 
+export * from "./http-request.js";
+export * from "./http-response.js";
+export * from "./ready.js";
+export * from "./reload.js";
+export * from "./socket-proxy.js";
+
 export type Message =
   | HttpRequestMessage
   | HttpResponseMessage
