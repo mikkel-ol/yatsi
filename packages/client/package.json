@@ -1,6 +1,6 @@
 {
-  "name": "@mikkel-ol/yatsi-client",
-  "version": "0.1.1",
+  "name": "@mikkel-ol/yatsi",
+  "version": "0.1.0",
   "main": "dist/index.js",
   "type": "module",
   "files": [
