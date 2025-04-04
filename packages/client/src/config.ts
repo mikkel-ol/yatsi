@@ -9,4 +9,4 @@ export const config = z.object({
   port: z.number().int().positive(),
 });
 
-export type Config = z.infer<typeof config>;
+export type Config = z.input<typeof config>;
