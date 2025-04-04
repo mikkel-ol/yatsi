@@ -7,19 +7,20 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "ts-node src/index.ts"
   },
   "bin": "dist/cli.js",
   "dependencies": {
-    "@mikkel-ol/shared": "workspace:*",
     "ws": "^8.18.1",
     "yargs": "^17.7.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@mikkel-ol/shared": "workspace:*",
     "@types/ws": "^8.18.0",
     "@types/yargs": "^17.0.33",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "tsup": "^8.4.0"
   }
 }
