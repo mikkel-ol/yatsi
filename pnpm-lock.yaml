@@ -54,9 +54,6 @@ importers:
 
   packages/server:
     dependencies:
-      '@mikkel-ol/shared':
-        specifier: workspace:*
-        version: link:../../shared
       express:
         specifier: ^4.21.2
         version: 4.21.2
@@ -79,6 +76,9 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
     devDependencies:
+      '@mikkel-ol/shared':
+        specifier: workspace:*
+        version: link:../../shared
       '@types/express':
         specifier: ^5.0.1
         version: 5.0.1
@@ -91,6 +91,9 @@ importers:
       ts-node:
         specifier: ^10.9.1
         version: 10.9.2(@types/node@22.13.14)(typescript@5.8.2)
+      tsup:
+        specifier: ^8.4.0
+        version: 8.4.0(typescript@5.8.2)
 
   shared:
     dependencies:
