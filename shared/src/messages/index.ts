@@ -19,3 +19,9 @@ export type Message =
   | SocketProxyErrorMessage
   | TunnelReadyMessage
   | ReloadMessage;
+
+export type MessageType = Message["type"];
+
+export type MessageByType = {
+  [M in Message as M["type"]]: Extract<Message, { type: M["type"] }>;
+};

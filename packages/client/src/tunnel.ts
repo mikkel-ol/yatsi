@@ -1,7 +1,18 @@
-import { __INIT_PARAM__, __INIT_PARAM_VALUE__, logger, Params, parseParams, type Message, type Stringify } from "@mikkel-ol/shared";
+import {
+  __INIT_PARAM__,
+  __INIT_PARAM_VALUE__,
+  dispatchMessage,
+  logger,
+  Params,
+  parseParams,
+  type Message,
+  type Stringify,
+} from "@mikkel-ol/shared";
 import WebSocket from "ws";
 import { config as configSchema, type Config } from "./config.js";
-import { dispatchMessage } from "./register-handlers.js";
+import { registerHandlers } from "./register-handlers.js";
+
+registerHandlers();
 
 export interface Tunnel {
   url: string;
