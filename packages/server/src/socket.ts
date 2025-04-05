@@ -1,7 +1,7 @@
 import { __INIT_PARAM__, __INIT_PARAM_VALUE__, logger, parse, safeParseParams, type Message } from "@mikkel-ol/shared";
 import type { IncomingMessage } from "http";
 import type { WebSocket } from "ws";
-import type { ClientInfo } from "../types/client-info.js";
+import type { ClientInfo } from "./types/client-info.js";
 import { CLIENTS } from "./clients.js";
 import { generateSlug } from "random-word-slugs";
 
