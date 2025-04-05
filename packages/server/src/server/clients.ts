@@ -1,5 +1,5 @@
 import type { Slug } from "@mikkel-ol/shared";
-import type { ClientInfo } from "./types/client-info.js";
+import type { ClientInfo } from "../types/client-info.js";
 
 // ? Should we persist this, clean it up, etc?
 /**
