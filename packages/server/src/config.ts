@@ -4,6 +4,7 @@ import { z } from "zod";
 export const EnvironmentVariables = z.object({
   DOMAIN: z.string().default(DEFAULT_DOMAIN),
   PORT: z.string().default("3000"),
+  SECURE: z.string().default("true"),
   LOG_LEVEL: z.nativeEnum(LOG_LEVEL).default(LOG_LEVEL.INFO),
   API_KEY: z.string().default("changeme"),
 });

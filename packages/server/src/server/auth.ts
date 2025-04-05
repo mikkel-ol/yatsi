@@ -6,12 +6,12 @@ import { logger, parse } from "@mikkel-ol/shared";
 export const authenticate: VerifyClientCallbackAsync<IncomingMessage> = ({ req }, done) => {
   const { subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
 
-  logger.debug(`Authenticating: '${subdomain}'`);
-
   // If socket connection directly to the tunnel,
   // we need to check if the subdomain is valid
   // and allow any connection if so
   if (subdomain) {
+    logger.debug(`Authenticating: '${subdomain}'`);
+
     const isClient = !!CLIENTS.get(subdomain);
 
     if (isClient) {

@@ -1,14 +1,17 @@
 import express from "express";
-import http from "http";
+import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { logger } from "@mikkel-ol/shared";
 import { proxy } from "./proxy.js";
 import { newConnection } from "./socket.js";
 import { authenticate } from "./auth.js";
+import { registerHandlers } from "./register-handlers.js";
 
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
 const wss = new WebSocketServer({ server, verifyClient: authenticate });
+
+registerHandlers();
 
 /**
  * Incoming WebSocket connections from clients
@@ -30,5 +33,8 @@ server.listen(process.env.PORT);
  */
 process.on("SIGINT", () => {
   logger.info("Shutting down server..");
-  server.close(() => process.exit(0));
+
+  wss.clients.forEach((client) => client.terminate());
+  server.closeAllConnections();
+  process.exit(0);
 });

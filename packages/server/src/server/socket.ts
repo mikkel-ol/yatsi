@@ -1,11 +1,19 @@
-import { __INIT_PARAM__, __INIT_PARAM_VALUE__, logger, parse, safeParseParams, type Message } from "@mikkel-ol/shared";
+import {
+  __INIT_PARAM__,
+  __INIT_PARAM_VALUE__,
+  dispatchMessage,
+  logger,
+  parse,
+  safeParseParams,
+  type Message,
+} from "@mikkel-ol/shared";
 import type { IncomingMessage } from "http";
 import type { WebSocket } from "ws";
 import type { ClientInfo } from "../types/client-info.js";
 import { CLIENTS } from "./clients.js";
 import { generateSlug } from "random-word-slugs";
 
-export const newConnection = (ws: WebSocket, req: IncomingMessage) => {
+export function newConnection(ws: WebSocket, req: IncomingMessage): void {
   logger.debug("Incoming WebSocket connection", req.url, req.socket.remoteAddress);
 
   // https://subdomain.tunnel.dev?__tunnel_init__=1&token=apikey&type=mf&port=1234&subdomain=mytunnel
@@ -18,12 +26,11 @@ export const newConnection = (ws: WebSocket, req: IncomingMessage) => {
   } else {
     return handleProxySocket(ws, req);
   }
-};
+}
 
 function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
-  // https://subdomain.tunnel.dev?pleasegivemea=tunnel&token=apikey&type=mf&port=1234&subdomain=mytunnel
+  // https://subdomain.tunnel.dev?token=apikey&type=mf&port=1234&subdomain=mytunnel
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
-
   const result = safeParseParams(searchParams);
 
   if (!result.success) {
@@ -32,9 +39,7 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
   }
 
   const { port, subdomain, type } = result.data;
-
   const slug = subdomain || generateSlug(2);
-
   const doesSlugExist = !!CLIENTS.get(slug);
 
   if (doesSlugExist) {
@@ -51,15 +56,16 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
   CLIENTS.set(slug, client);
 
   ws.on("message", (data) => {
-    const message: Message = JSON.parse(data.toString());
-    logger.debug(`Incoming message on ${client.slug}`, message);
+    try {
+      const msg: Message = JSON.parse(data.toString());
+      logger.debug(`Incoming message on ${client.slug}`, msg);
 
-    if (type === "mf" && message.type === "reload") {
-      CLIENTS.forEach((client) => {
-        if (client.type === "host") {
-          client.ws.send(JSON.stringify(message));
-        }
+      dispatchMessage({
+        ws,
+        msg,
       });
+    } catch (err) {
+      logger.error("Failed to parse message", err);
     }
   });
 
@@ -67,10 +73,12 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
     CLIENTS.delete(slug);
   });
 
+  const protocol = process.env.SECURE === "true" ? "https" : "http";
+
   const message: Message = {
     type: "tunnel-ready",
     timestamp: Date.now(),
-    url: `https://${slug}.${process.env.DOMAIN}`,
+    url: `${protocol}://${slug}.${process.env.DOMAIN}`,
   };
 
   ws.send(JSON.stringify(message));
@@ -92,18 +100,15 @@ function handleProxySocket(ws: WebSocket, req: IncomingMessage) {
   const proxy = client.ws;
 
   proxy.on("message", (data) => {
-    const message: Message = JSON.parse(data.toString());
+    try {
+      const msg: Message = JSON.parse(data.toString());
 
-    if (message.type === "socket-proxy-close") {
-      ws.close(message.code, message.reason);
-    }
-
-    if (message.type === "socket-proxy-error") {
-      ws.close(1003, message.error.message);
-    }
-
-    if (message.type === "socket-proxy-message") {
-      ws.send(message.data);
+      dispatchMessage({
+        ws,
+        msg,
+      });
+    } catch (err) {
+      logger.error("Failed to parse message", err);
     }
   });
 
