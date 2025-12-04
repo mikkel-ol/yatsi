@@ -1,7 +1,7 @@
 import {
-  __INIT_PARAM__,
-  __INIT_PARAM_VALUE__,
+  CreateTunnelParams,
   dispatchMessage,
+  HubParams,
   logger,
   parse,
   safeParseParams,
@@ -12,16 +12,14 @@ import type { WebSocket } from "ws";
 import type { ClientInfo } from "../types/client-info.js";
 import { CLIENTS } from "./clients.js";
 import { generateSlug } from "random-word-slugs";
+import { v4 as uuidv4 } from "uuid";
 
 export function newConnection(ws: WebSocket, req: IncomingMessage): void {
   logger.debug("Incoming WebSocket connection", req.url, req.socket.remoteAddress);
 
-  // https://subdomain.tunnel.dev?__tunnel_init__=1&token=apikey&type=mf&port=1234&subdomain=mytunnel
-  const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
+  const { subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
 
-  const isInit = searchParams.get(__INIT_PARAM__) === __INIT_PARAM_VALUE__;
-
-  if (isInit) {
+  if (!subdomain) {
     return handleNewTunnel(ws, req);
   } else {
     return handleProxySocket(ws, req);
@@ -29,16 +27,15 @@ export function newConnection(ws: WebSocket, req: IncomingMessage): void {
 }
 
 function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
-  // https://subdomain.tunnel.dev?token=apikey&type=mf&port=1234&subdomain=mytunnel
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
-  const result = safeParseParams(searchParams);
+  const result = safeParseParams(searchParams, CreateTunnelParams);
 
   if (!result.success) {
     ws.close(1003, `Invalid parameters: ${JSON.stringify(result.error.format())}`);
     return;
   }
 
-  const { port, subdomain, type } = result.data;
+  const { port, subdomain } = result.data;
   const slug = subdomain || generateSlug(2);
   const doesSlugExist = !!CLIENTS.get(slug);
 
@@ -47,13 +44,14 @@ function handleNewTunnel(ws: WebSocket, req: IncomingMessage) {
   }
 
   const client: ClientInfo = {
+    id: uuidv4(),
     ws,
     port,
-    type,
     slug,
+    owner: true,
   };
 
-  CLIENTS.set(slug, client);
+  CLIENTS.set(slug, [client]);
 
   ws.on("message", (data) => {
     try {
@@ -91,43 +89,95 @@ function handleProxySocket(ws: WebSocket, req: IncomingMessage) {
     return ws.close(1003, `Unknown tunnel: ${req.headers.host}`);
   }
 
-  const client = CLIENTS.get(subdomain);
+  const connectedClients = CLIENTS.get(subdomain);
 
-  if (!client) {
+  if (!connectedClients) {
     return ws.close(1003, `Unknown tunnel: ${subdomain}`);
   }
 
-  const proxy = client.ws;
+  const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
+  const result = safeParseParams(searchParams, HubParams);
 
-  proxy.on("message", (data) => {
-    try {
-      const msg: Message = JSON.parse(data.toString());
+  if (!result.success) {
+    ws.close(1003, `Invalid parameters: ${JSON.stringify(result.error.format())}`);
+    return;
+  }
 
-      dispatchMessage({
-        ws,
-        msg,
-      });
-    } catch (err) {
-      logger.error("Failed to parse message", err);
-    }
-  });
+  const { mode } = result.data;
 
-  ws.on("message", (data) => {
-    const message: Message = {
-      type: "socket-proxy-message",
-      timestamp: Date.now(),
-      data: data.toString(),
-    };
-
-    proxy.send(JSON.stringify(message));
-  });
-
-  const message: Message = {
-    type: "socket-proxy-open",
-    timestamp: Date.now(),
-    headers: req.headers,
-    protocol: ws.protocol,
+  const client: ClientInfo = {
+    id: uuidv4(),
+    ws,
+    slug: subdomain,
+    owner: false,
   };
 
-  proxy.send(JSON.stringify(message));
+  CLIENTS.set(subdomain, [...connectedClients, client]);
+
+  if (mode === "hub") {
+    const owner = CLIENTS.get(subdomain)?.find((c) => c.owner)?.ws;
+
+    if (!owner) {
+      return ws.close(1003, `No owner found for tunnel: ${subdomain}`);
+    }
+
+    ws.on("message", (data) => {
+      const message: Message = {
+        type: "custom-message",
+        timestamp: Date.now(),
+        data: data.toString(),
+      };
+
+      owner.send(JSON.stringify(message));
+    });
+  }
+
+  if (mode === "proxy") {
+    const owner = CLIENTS.get(subdomain)?.find((c) => c.owner)?.ws;
+
+    if (!owner) {
+      return ws.close(1003, `No owner found for tunnel: ${subdomain}`);
+    }
+
+    owner.on("message", (data) => {
+      try {
+        const msg: Message = JSON.parse(data.toString());
+
+        dispatchMessage({
+          ws,
+          msg,
+        });
+      } catch (err) {
+        logger.error("Failed to parse message", err);
+      }
+    });
+
+    ws.on("message", (data) => {
+      const message: Message = {
+        type: "socket-proxy-message",
+        timestamp: Date.now(),
+        data: data.toString(),
+      };
+
+      owner.send(JSON.stringify(message));
+    });
+
+    const message: Message = {
+      type: "socket-proxy-open",
+      timestamp: Date.now(),
+      headers: req.headers,
+      protocol: ws.protocol,
+    };
+
+    owner.send(JSON.stringify(message));
+  }
+
+  ws.on("close", () => {
+    logger.debug(`Client disconnected from ${subdomain}`, client.id);
+
+    const currentClients = CLIENTS.get(subdomain) || [];
+    const filteredClients = currentClients.filter((c) => c.id !== client.id);
+
+    CLIENTS.set(subdomain, filteredClients);
+  });
 }

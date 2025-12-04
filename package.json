@@ -8,7 +8,9 @@
     "check-types": "turbo run check-types",
     "dev": "turbo run dev",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "start:server": "node packages/server/dist",
+    "start:client": "node packages/client/dist"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",

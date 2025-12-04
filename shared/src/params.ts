@@ -1,37 +1,38 @@
-import { z } from "zod";
+import { z, ZodSchema, type ParseReturnType, type SafeParseReturnType } from "zod";
 
-export const __INIT_PARAM__ = "__tunnel_init__";
-export const __INIT_PARAM_VALUE__ = "1";
-
-export const Params = z
+export const CreateTunnelParams = z
   .object({
-    [__INIT_PARAM__]: z.literal(__INIT_PARAM_VALUE__),
     token: z.coerce.string(),
     port: z.coerce.number().int().positive(),
     subdomain: z.coerce.string().optional(),
-    type: z.union([z.literal("host"), z.literal("mf")]).default("mf"),
   })
   .strict();
 
-export type Params = z.input<typeof Params>;
-export type Slug = Params["subdomain"];
+export type CreateTunnelParams = z.input<typeof CreateTunnelParams>;
+export type Slug = CreateTunnelParams["subdomain"];
 
-export function parseParams(searchParams: URLSearchParams) {
-  return parse(searchParams, "parse");
+export const HubParams = z
+  .object({
+    mode: z.literal("hub").or(z.literal("proxy")),
+  })
+  .strict();
+
+export type HubParams = z.input<typeof HubParams>;
+
+export function parseParams<T>(searchParams: URLSearchParams, schema: ZodSchema<T>) {
+  return parse(searchParams, schema, "parse") as z.input<ZodSchema<T>>;
 }
 
-export function safeParseParams(searchParams: URLSearchParams) {
-  return parse(searchParams, "safeParse");
+export function safeParseParams<T>(searchParams: URLSearchParams, schema: ZodSchema<T>) {
+  return parse(searchParams, schema, "safeParse") as SafeParseReturnType<T, T>;
 }
 
-function parse(searchParams: URLSearchParams, method: "parse"): ReturnType<(typeof Params)["parse"]>;
-function parse(searchParams: URLSearchParams, method: "safeParse"): ReturnType<(typeof Params)["safeParse"]>;
-function parse(searchParams: URLSearchParams, method: "parse" | "safeParse") {
+function parse<T>(searchParams: URLSearchParams, schema: ZodSchema<T>, method: "parse" | "safeParse") {
   const data = {} as any;
 
   for (const [key, value] of searchParams.entries()) {
     data[key] = value;
   }
 
-  return Params[method](data);
+  return schema[method](data);
 }

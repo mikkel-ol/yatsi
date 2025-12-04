@@ -20,16 +20,23 @@ export const proxy: RequestHandler = (req, res) => {
     return;
   }
 
-  const client = CLIENTS.get(subdomain);
+  const connectedClients = CLIENTS.get(subdomain);
 
-  if (!client) {
+  if (!connectedClients) {
     res.json({ error: `Unknown tunnel: ${subdomain}` }).status(400);
+    return;
+  }
+
+  const initiatorClient = connectedClients.find((client) => client.owner);
+
+  if (!initiatorClient) {
+    res.json({ error: `No client found for tunnel: ${subdomain}` }).status(400);
     return;
   }
 
   logger.debug(`${req.method} ${subdomain}: ${req.url}`, req.socket.remoteAddress);
 
-  const ws = client.ws;
+  const ws = initiatorClient.ws;
 
   // Load all the chunk data from the request
   const chunks: Buffer[] = [];

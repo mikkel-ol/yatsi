@@ -1,7 +1,7 @@
+import type { CustomMessage } from "./custom.js";
 import type { HttpRequestMessage } from "./http-request.js";
 import type { HttpResponseMessage } from "./http-response.js";
 import type { TunnelReadyMessage } from "./ready.js";
-import type { ReloadMessage } from "./reload.js";
 import type {
   SocketProxyCloseMessage,
   SocketProxyErrorMessage,
@@ -12,8 +12,8 @@ import type {
 export * from "./http-request.js";
 export * from "./http-response.js";
 export * from "./ready.js";
-export * from "./reload.js";
 export * from "./socket-proxy.js";
+export * from "./custom.js";
 
 export type Message =
   | HttpRequestMessage
@@ -23,7 +23,7 @@ export type Message =
   | SocketProxyCloseMessage
   | SocketProxyErrorMessage
   | TunnelReadyMessage
-  | ReloadMessage;
+  | CustomMessage;
 
 export type MessageType = Message["type"];
 

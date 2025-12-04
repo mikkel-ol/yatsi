@@ -1,9 +1,19 @@
-import type { Params, Slug } from "@mikkel-ol/shared";
+import type { Slug } from "@mikkel-ol/shared";
 import type { WebSocket } from "ws";
 
-export interface ClientInfo {
+export interface InitiatorClient {
+  id: string;
   slug: Slug;
   ws: WebSocket;
   port: number;
-  type: NonNullable<Params["type"]>;
+  owner: true;
 }
+
+export interface ConnectedClient {
+  id: string;
+  slug: Slug;
+  ws: WebSocket;
+  owner: false;
+}
+
+export type ClientInfo = InitiatorClient | ConnectedClient;
