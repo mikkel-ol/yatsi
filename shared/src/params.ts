@@ -9,7 +9,6 @@ export const Params = z
     token: z.coerce.string(),
     port: z.coerce.number().int().positive(),
     subdomain: z.coerce.string().optional(),
-    type: z.union([z.literal("host"), z.literal("mf")]).default("mf"),
   })
   .strict();
 

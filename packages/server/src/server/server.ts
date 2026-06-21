@@ -5,13 +5,13 @@ import { logger } from "@mikkel-ol/shared";
 import { proxy } from "./proxy.js";
 import { newConnection } from "./socket.js";
 import { authenticate } from "./auth.js";
-import { registerHandlers } from "./register-handlers.js";
+import { control } from "./control.js";
 
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server, verifyClient: authenticate });
 
-registerHandlers();
+app.use("/_yatsi", control);
 
 /**
  * Incoming WebSocket connections from clients

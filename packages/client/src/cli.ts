@@ -2,7 +2,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { tunnel } from "./tunnel.js";
-import { DEFAULT_DOMAIN, logger } from "@mikkel-ol/shared";
+import { logger } from "@mikkel-ol/shared";
 
 yargs(hideBin(process.argv))
   .command(
@@ -28,7 +28,7 @@ yargs(hideBin(process.argv))
         .option("domain", {
           type: "string",
           describe: "Domain server to use for the tunnel",
-          default: DEFAULT_DOMAIN,
+          demandOption: true,
         })
         .option("secure", {
           type: "boolean",

@@ -3,7 +3,7 @@ import { request } from "http";
 import type { Context } from "../types/context.js";
 
 export function httpRequestHandler(context: Context<HttpRequestMessage>): void {
-  const { config, msg, ws } = context;
+  const { config, msg, requests, ws } = context;
   const { port } = config;
   const { requestId, method, url, headers, body } = msg;
 
@@ -17,31 +17,45 @@ export function httpRequestHandler(context: Context<HttpRequestMessage>): void {
   };
 
   const req = request(opts, (res) => {
-    const chunks: Buffer[] = [];
-    res.on("data", (chunk) => chunks.push(chunk));
+    const start: Message = {
+      type: "http-response-start",
+      timestamp: Date.now(),
+      requestId,
+      status: res.statusCode,
+      headers: res.headers,
+    };
+    ws.send(JSON.stringify(start));
 
-    res.on("end", () => {
+    res.on("data", (chunk: Buffer) => {
       const message: Message = {
-        type: "http-response",
+        type: "http-response-chunk",
         timestamp: Date.now(),
         requestId,
-        status: res.statusCode,
-        headers: res.headers,
-        body: Buffer.concat(chunks).toString("base64"),
+        body: chunk.toString("base64"),
       };
+      ws.send(JSON.stringify(message));
+    });
 
+    res.on("end", () => {
+      requests.delete(requestId);
+      const message: Message = {
+        type: "http-response-end",
+        timestamp: Date.now(),
+        requestId,
+      };
       ws.send(JSON.stringify(message));
     });
   });
+  requests.set(requestId, req);
 
   req.on("error", (e) => {
+    requests.delete(requestId);
+    if (ws.readyState !== ws.OPEN) return;
     const message: Message = {
-      type: "http-response",
+      type: "http-response-error",
       timestamp: Date.now(),
       requestId,
-      status: 502,
-      headers: {},
-      body: JSON.stringify(e),
+      message: e instanceof Error ? e.message : String(e),
     };
 
     ws.send(JSON.stringify(message));

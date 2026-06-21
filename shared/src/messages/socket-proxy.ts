@@ -4,6 +4,8 @@ import type { WebSocket } from "ws";
 export interface SocketProxyOpenMessage {
   type: "socket-proxy-open";
   timestamp: number;
+  connectionId: string;
+  url: string;
   headers: IncomingHttpHeaders;
   protocol: WebSocket["protocol"];
 }
@@ -11,12 +13,15 @@ export interface SocketProxyOpenMessage {
 export interface SocketProxyMessage {
   type: "socket-proxy-message";
   timestamp: number;
-  data: any;
+  connectionId: string;
+  data: string;
+  binary: boolean;
 }
 
 export interface SocketProxyCloseMessage {
   type: "socket-proxy-close";
   timestamp: number;
+  connectionId: string;
   code: number;
   reason: string;
 }
@@ -24,5 +29,6 @@ export interface SocketProxyCloseMessage {
 export interface SocketProxyErrorMessage {
   type: "socket-proxy-error";
   timestamp: number;
-  error: Error;
+  connectionId: string;
+  message: string;
 }

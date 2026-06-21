@@ -11,11 +11,14 @@ import {
 import WebSocket from "ws";
 import { config as configSchema, type Config } from "./config.js";
 import { registerHandlers } from "./register-handlers.js";
+import type { ProxyConnection } from "./types/context.js";
 
 registerHandlers();
 
 export interface Tunnel {
   url: string;
+  close(): void;
+  closed: Promise<void>;
 }
 
 export const tunnel = {
@@ -38,6 +41,9 @@ export const tunnel = {
 
     logger.debug(`Connecting to tunnel server at ${url}`);
     const ws = new WebSocket(url);
+    const proxies = new Map<string, ProxyConnection>();
+    const requests = new Map<string, import("http").ClientRequest>();
+    const closed = new Promise<void>((resolve) => ws.once("close", resolve));
 
     ws.on("error", (err) => {
       const unauthenticated = err.message.includes("401");
@@ -50,10 +56,15 @@ export const tunnel = {
     });
 
     ws.on("close", () => {
+      proxies.forEach((proxy) => proxy.socket.close());
+      proxies.clear();
+      requests.forEach((request) => request.destroy());
+      requests.clear();
       logger.info("Tunnel closed");
     });
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      ws.once("error", reject);
       ws.on("message", (data) => {
         logger.debug("Incoming message", data.toString());
 
@@ -61,10 +72,17 @@ export const tunnel = {
           const msg = JSON.parse(data.toString()) as Message;
 
           if (msg.type === "tunnel-ready") {
-            return resolve({ url: msg.url });
+            ws.removeListener("error", reject);
+            return resolve({
+              url: msg.url,
+              close: () => ws.close(1000, "Tunnel closed by client"),
+              closed,
+            });
           } else {
             dispatchMessage({
               ws,
+              proxies,
+              requests,
               config,
               msg,
             });

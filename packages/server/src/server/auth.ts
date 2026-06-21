@@ -2,6 +2,7 @@ import type { IncomingMessage } from "http";
 import type { VerifyClientCallbackAsync } from "ws";
 import { CLIENTS } from "./clients.js";
 import { logger, parse } from "@mikkel-ol/shared";
+import { canUseTunnelToken } from "./grants.js";
 
 export const authenticate: VerifyClientCallbackAsync<IncomingMessage> = ({ req }, done) => {
   const { subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
@@ -24,17 +25,10 @@ export const authenticate: VerifyClientCallbackAsync<IncomingMessage> = ({ req }
   // else it is a new tunnel request
   // and we need to check the API key
   const searchParams = new URLSearchParams((req.url || "").split("?")[1]);
-  const apiKey = searchParams.get("token");
+  const token = searchParams.get("token");
+  logger.debug("Authenticating new tunnel");
 
-  logger.debug(`No subdomain found, authentication API key: '${apiKey}'`);
-
-  if (!apiKey) {
-    return done(false, 401, "Invalid API key");
-  }
-
-  const isValidKey = process.env.API_KEY === apiKey;
-
-  if (!isValidKey) {
+  if (!canUseTunnelToken(token)) {
     return done(false, 401, "Invalid API key");
   }
 

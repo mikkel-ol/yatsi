@@ -4,57 +4,101 @@ import { logger, parse, type Message } from "@mikkel-ol/shared";
 import { v4 as uuidv4 } from "uuid";
 import type { RawData } from "ws";
 
-/**
- * Handle incoming HTTP requests to a tunnel and forward them to the client socket
- */
+const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
+const RESPONSE_START_TIMEOUT_MS = 30_000;
+
 export const proxy: RequestHandler = (req, res) => {
   const { domain, subdomain } = parse(req.headers.host || "", process.env.DOMAIN);
 
   if (!domain) {
-    res.json({ error: "No host found" }).status(400);
+    res.status(400).json({ error: "No host found" });
     return;
   }
 
   if (!subdomain) {
-    res.json({ error: `Unknown tunnel: ${subdomain}.${domain}` }).status(400);
+    res.status(404).json({ error: `Unknown tunnel: ${req.headers.host}` });
     return;
   }
 
   const client = CLIENTS.get(subdomain);
-
   if (!client) {
-    res.json({ error: `Unknown tunnel: ${subdomain}` }).status(400);
+    res.status(404).json({ error: `Unknown tunnel: ${subdomain}` });
     return;
   }
 
   logger.debug(`${req.method} ${subdomain}: ${req.url}`, req.socket.remoteAddress);
 
-  const ws = client.ws;
-
-  // Load all the chunk data from the request
   const chunks: Buffer[] = [];
-  req.on("data", (chunk) => chunks.push(chunk));
+  let bodySize = 0;
 
-  // When the request ends, send the data to the client over the WebSocket
+  req.on("data", (chunk: Buffer) => {
+    bodySize += chunk.length;
+    if (bodySize > MAX_REQUEST_BYTES) {
+      res.status(413).json({ error: "Request body too large" });
+      req.destroy();
+      return;
+    }
+    chunks.push(chunk);
+  });
+
   req.on("end", () => {
+    if (res.headersSent || res.writableEnded) return;
+
     const requestId = uuidv4();
-    const body = Buffer.concat(chunks).toString("base64");
+    const ws = client.ws;
+    let started = false;
 
-    // 2. Listen for the response from the client
-    const onMessage = (msg: RawData) => {
-      const response = JSON.parse(msg.toString()) as Message;
+    const cleanup = () => {
+      clearTimeout(startTimeout);
+      ws.off("message", onMessage);
+      client.httpResponses.delete(requestId);
+    };
 
-      // 3. Forward the response back to the original request
-      if (response.type === "http-response" && response.requestId === requestId) {
-        ws.off("message", onMessage);
-        res.writeHead(response.status ?? 0, response.headers);
-        res.end(Buffer.from(response.body, "base64"));
+    const fail = (status: number, message: string) => {
+      cleanup();
+      if (!res.headersSent) res.status(status).json({ error: message });
+      else res.destroy(new Error(message));
+    };
+
+    const onMessage = (raw: RawData) => {
+      let message: Message;
+      try {
+        message = JSON.parse(raw.toString()) as Message;
+      } catch {
+        return;
+      }
+
+      if (!("requestId" in message) || message.requestId !== requestId) return;
+
+      switch (message.type) {
+        case "http-response-start":
+          started = true;
+          clearTimeout(startTimeout);
+          res.writeHead(message.status ?? 502, message.headers);
+          res.flushHeaders();
+          break;
+        case "http-response-chunk":
+          if (started) res.write(Buffer.from(message.body, "base64"));
+          break;
+        case "http-response-end":
+          cleanup();
+          res.end();
+          break;
+        case "http-response-error":
+          fail(502, message.message);
+          break;
       }
     };
 
-    ws.on("message", onMessage);
+    const startTimeout = setTimeout(
+      () => fail(504, "Tunnel response timed out"),
+      RESPONSE_START_TIMEOUT_MS,
+    );
 
-    // 1. Send the request to the client
+    ws.on("message", onMessage);
+    client.httpResponses.set(requestId, res);
+    res.on("close", cleanup);
+
     const payload: Message = {
       type: "http-request",
       timestamp: Date.now(),
@@ -62,9 +106,11 @@ export const proxy: RequestHandler = (req, res) => {
       method: req.method,
       url: req.url,
       headers: req.headers,
-      body,
+      body: Buffer.concat(chunks).toString("base64"),
     };
 
-    ws.send(JSON.stringify(payload));
+    ws.send(JSON.stringify(payload), (error) => {
+      if (error) fail(502, "Tunnel connection is unavailable");
+    });
   });
 };

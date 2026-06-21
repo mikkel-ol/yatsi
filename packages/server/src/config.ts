@@ -1,12 +1,12 @@
-import { DEFAULT_DOMAIN, LOG_LEVEL } from "@mikkel-ol/shared";
+import { LOG_LEVEL } from "@mikkel-ol/shared";
 import { z } from "zod";
 
 export const EnvironmentVariables = z.object({
-  DOMAIN: z.string().default(DEFAULT_DOMAIN),
+  DOMAIN: z.string().min(1),
   PORT: z.string().default("3000"),
   SECURE: z.string().default("true"),
   LOG_LEVEL: z.nativeEnum(LOG_LEVEL).default(LOG_LEVEL.INFO),
-  API_KEY: z.string().default("changeme"),
+  API_KEY: z.string().min(1),
 });
 
 const envVars = EnvironmentVariables.parse(process.env);

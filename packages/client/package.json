@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "ts-node src/index.ts"
+    "dev": "tsx watch src/index.ts"
   },
   "bin": "dist/cli.js",
   "dependencies": {
@@ -20,7 +20,7 @@
     "@mikkel-ol/shared": "workspace:*",
     "@types/ws": "^8.18.0",
     "@types/yargs": "^17.0.33",
-    "ts-node": "^10.9.1",
-    "tsup": "^8.4.0"
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.2"
   }
 }
