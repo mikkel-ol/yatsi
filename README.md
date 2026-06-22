@@ -1,8 +1,8 @@
 # YATSI
 
 YATSI exposes local HTTP, Server-Sent Events, and WebSocket services through
-temporary public URLs. It is a generic tunnel service; workshop behavior lives
-in consumers such as `mf-ws-builder`.
+temporary public URLs. It is a generic tunnel service for routing public
+traffic to local development services.
 
 ## Server
 
