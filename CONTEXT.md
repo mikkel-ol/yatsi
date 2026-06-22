@@ -1,6 +1,6 @@
 # YATSI Tunnel Service
 
-YATSI exposes a local HTTP, Server-Sent Events, and WebSocket service through a public URL. It is transport infrastructure.
+YATSI, short for **Yet Another Tunneling Service Implementation**, exposes a local HTTP, Server-Sent Events, and WebSocket service through a public URL. It is transport infrastructure.
 
 ## Language
 
