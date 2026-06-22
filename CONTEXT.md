@@ -1,6 +1,6 @@
 # YATSI Tunnel Service
 
-YATSI exposes a local HTTP, Server-Sent Events, and WebSocket service through a public URL. It is transport infrastructure and does not own workshop or micro-frontend composition behavior.
+YATSI exposes a local HTTP, Server-Sent Events, and WebSocket service through a public URL. It is transport infrastructure.
 
 ## Language
 
@@ -53,5 +53,4 @@ The deployment credential that authorizes trusted clients to open ordinary tunne
 
 ## Flagged Ambiguities
 
-- "host" and "mf" appear in the tunnel protocol, but workshop roles belong to YATSI consumers rather than the tunnel domain.
 - YATSI treats grant scope and subject values as opaque; consumers assign their domain meaning.
