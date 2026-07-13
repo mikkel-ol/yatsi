@@ -1,6 +1,26 @@
 {
   "name": "@mikkel-ol/yatsi",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "Client CLI and library for YATSI, a self-hosted tunneling service. Expose a local HTTP, SSE, or WebSocket service through a temporary public URL.",
+  "keywords": [
+    "tunnel",
+    "tunneling",
+    "localhost",
+    "expose",
+    "http",
+    "websocket",
+    "sse",
+    "self-hosted"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikkel-ol/yatsi.git",
+    "directory": "packages/client"
+  },
+  "homepage": "https://github.com/mikkel-ol/yatsi#readme",
+  "bugs": {
+    "url": "https://github.com/mikkel-ol/yatsi/issues"
+  },
   "main": "dist/index.js",
   "type": "module",
   "files": [

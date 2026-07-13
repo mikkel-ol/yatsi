@@ -1,36 +1,56 @@
 # @mikkel-ol/yatsi
 
-YATSI stands for **Yet Another Tunneling Service Implementation**. It exposes a local HTTP, Server-Sent Events, or WebSocket service through a temporary public URL on a YATSI tunnel server.
+**Yet Another Tunneling Service Implementation** — the client. Yes, the world has plenty of tunneling services. This one is yours.
 
-This package provides the YATSI client CLI and library API.
+YATSI exposes a local HTTP, SSE, or WebSocket service through a temporary public URL. No accounts, no dashboards, no "you've reached your free tier limit" emails at 2 AM — you host the server, you own the domain, you hand out the keys.
 
-## Installation
+```sh
+npx @mikkel-ol/yatsi <port> --domain tunnel.example.com --token <your-api-key>
+# ✔ Tunnel ready at: https://brave-toaster.tunnel.example.com
+```
+
+Everything hitting that URL is forwarded to `localhost:<port>` — plain HTTP, streaming responses, Server-Sent Events, and WebSockets included.
+
+This package is the client: a CLI and a library. It connects to a [YATSI server](https://github.com/mikkel-ol/yatsi) that you (or someone who likes you) host on a wildcard domain. Server setup lives in the [main README](https://github.com/mikkel-ol/yatsi#server-setup) — one Docker container, two DNS records, done.
+
+## Table of contents
+
+- [How it works](#how-it-works)
+- [CLI](#cli)
+- [Library](#library)
+- [Tunnel grants](#tunnel-grants)
+- [Options reference](#options-reference)
+
+## How it works
+
+The client opens a single outbound WebSocket to the server and authenticates with an API key. The server assigns a subdomain (a random two-word slug, or one you pick) and forwards all public traffic for that subdomain back through the tunnel to your local port. When the client disconnects, the URL dies with it.
+
+## CLI
+
+No install needed:
+
+```sh
+npx @mikkel-ol/yatsi <port> --domain tunnel.example.com --token <api-key>
+```
+
+Want a predictable URL? Ask for a subdomain:
+
+```sh
+npx @mikkel-ol/yatsi <port> --domain tunnel.example.com --token <api-key> --subdomain demo
+# ✔ Tunnel ready at: https://demo.tunnel.example.com
+```
+
+Talking to a local or non-TLS tunnel server? Pass `--no-secure`:
+
+```sh
+npx @mikkel-ol/yatsi <port> --domain localhost:3000 --token <api-key> --no-secure
+```
+
+## Library
 
 ```sh
 npm install @mikkel-ol/yatsi
 ```
-
-## CLI
-
-Start a tunnel to a local port:
-
-```sh
-npx yatsi 4200 --domain tunnel.example.com --token replace-me
-```
-
-Use `--subdomain` to request a specific subdomain:
-
-```sh
-npx yatsi 4200 --domain tunnel.example.com --token replace-me --subdomain my-app
-```
-
-By default the client connects with HTTPS/WSS. For a local or insecure tunnel server, pass `--no-secure`:
-
-```sh
-npx yatsi 4200 --domain localhost:3000 --token replace-me --no-secure
-```
-
-## Library
 
 ```ts
 import { tunnel } from "@mikkel-ol/yatsi";
@@ -38,53 +58,70 @@ import { tunnel } from "@mikkel-ol/yatsi";
 const activeTunnel = await tunnel.start({
   port: 4200,
   domain: "tunnel.example.com",
-  secure: true,
   token: process.env.YATSI_API_KEY!,
 });
 
-console.log(activeTunnel.url);
+console.log(activeTunnel.url); // https://brave-toaster.tunnel.example.com
 
-process.on("SIGINT", () => {
-  activeTunnel.close();
-});
+// later
+activeTunnel.close();
+await activeTunnel.closed; // resolves once the tunnel is fully torn down
 ```
 
-`tunnel.start` resolves when the tunnel server confirms the public URL. The returned tunnel includes:
+`tunnel.start()` resolves once the server confirms the public URL — no polling, no "is it up yet".
 
-- `url`: public tunnel URL
-- `close()`: closes the tunnel connection
-- `closed`: promise that resolves after the connection closes
+## Tunnel grants
 
-## Grants
+Sometimes you want to let someone open a tunnel _without_ handing them your permanent API key — a CI job, a workshop attendee, a service you only half trust. That's what grants are for.
 
-Trusted services can create short-lived, single-use tunnel grants with `createGrantClient`:
+A **tunnel grant** is a single-use, short-lived token (max 5 minutes, default 60 seconds) that authorizes exactly one tunnel connection. Grants carry an issuer-defined `scope` and `subject` — YATSI treats both as opaque strings; you decide what they mean. Revoking a subject or a whole scope immediately closes any tunnels opened with those grants.
 
 ```ts
 import { createGrantClient } from "@mikkel-ol/yatsi";
 
 const grants = createGrantClient({
-  serverUrl: "https://tunnel.example.com",
-  apiKey: process.env.YATSI_API_KEY!,
+  serverUrl: "tunnel.example.com",
+  apiKey: process.env.YATSI_API_KEY!, // grant control requires the permanent key
 });
 
+// Issue a grant — the consumer uses grant.token as their tunnel token
 const grant = await grants.create({
-  scope: "preview",
-  subject: "project-123",
-  expiresInSeconds: 60,
+  scope: "workshop-2026",
+  subject: "attendee-42",
+  expiresInSeconds: 120,
 });
 
-console.log(grant.token);
+// Revoke one subject (closes their active tunnel)...
+await grants.revoke({ scope: "workshop-2026", subject: "attendee-42" });
+
+// ...or nuke the entire scope
+await grants.revoke({ scope: "workshop-2026" });
 ```
 
-Grants can also be revoked by scope and optional subject:
+The consumer then connects like any other client, just with the grant token instead of the API key:
 
-```ts
-await grants.revoke({
-  scope: "preview",
-  subject: "project-123",
-});
+```sh
+npx @mikkel-ol/yatsi <port> --domain tunnel.example.com --token <grant-token>
 ```
 
-## Requirements
+## Options reference
 
-YATSI does not provide a hosted tunnel domain. You need access to a running YATSI server with a configured domain and API key.
+| CLI option    | Required | Default | Description                                |
+| ------------- | -------- | ------- | ------------------------------------------ |
+| `port`        | yes      | —       | Local port to expose (positional)          |
+| `--domain`    | yes      | —       | Tunnel server domain                       |
+| `--token`     | yes      | —       | API key or grant token (alias: `--apiKey`) |
+| `--subdomain` | no       | random  | Desired subdomain for the tunnel           |
+| `--secure`    | no       | `true`  | Connect to the server over `wss://`        |
+
+`tunnel.start()` accepts the same options in camelCase and returns a `Tunnel`:
+
+| Property  | Type            | Description                                 |
+| --------- | --------------- | ------------------------------------------- |
+| `url`     | `string`        | The public tunnel URL                       |
+| `close()` | `() => void`    | Close the tunnel                            |
+| `closed`  | `Promise<void>` | Resolves once the tunnel is fully torn down |
+
+## Server
+
+There is no hosted YATSI service — that's a feature. Deploy your own server (Docker image included) on any box with a wildcard DNS record. See the [server setup guide](https://github.com/mikkel-ol/yatsi#server-setup).
